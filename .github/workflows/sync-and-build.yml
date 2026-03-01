@@ -1,0 +1,88 @@
+name: Sync Upstream and Build
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 每 6 小时检查一次
+  workflow_dispatch:      # 手动触发
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  UPSTREAM_REPO: HKUDS/nanobot
+  UPSTREAM_BRANCH: main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream
+        run: |
+          git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git || true
+          git fetch upstream
+
+      - name: Backup custom Dockerfile changes
+        id: backup
+        run: |
+          if grep -q "# Custom dependencies start" Dockerfile; then
+            sed -n '/# Custom dependencies start/,/# Custom dependencies end/p' Dockerfile > /tmp/custom_deps.txt
+            echo "has_custom=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_custom=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Merge upstream
+        run: |
+          git merge upstream/${{ env.UPSTREAM_BRANCH }} --no-edit || {
+            git checkout --ours Dockerfile
+            git add Dockerfile
+            git commit -m "Merge upstream with custom Dockerfile preserved"
+          }
+
+      - name: Restore custom dependencies
+        if: steps.backup.outputs.has_custom == 'true'
+        run: |
+          cat /tmp/custom_deps.txt >> Dockerfile
+          git add Dockerfile
+          git diff --cached --quiet || git commit -m "Restore custom dependencies"
+
+      - name: Push changes
+        run: git push origin main
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
