@@ -2,7 +2,7 @@ name: Sync Upstream and Build
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # 每 6 小时检查一次
+    - cron: '0 19 * * *'  # 每天凌晨3点检查一次
   workflow_dispatch:      # 手动触发
 
 env:
