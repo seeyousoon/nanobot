@@ -38,3 +38,26 @@ EXPOSE 18790
 
 ENTRYPOINT ["nanobot"]
 CMD ["status"]
+
+# ===== Custom dependencies start =====
+
+# 文档技能依赖
+RUN uv pip install --system --no-cache \
+    pdfplumber \
+    reportlab \
+    pandas \
+    pypdf \
+    openpyxl \
+    python-docx \
+    python-pptx
+
+# LibreOffice
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libreoffice-writer \
+        libreoffice-calc \
+        libreoffice-impress && \
+    rm -rf /var/lib/apt/lists/*
+
+# ===== Custom dependencies end =====
+
