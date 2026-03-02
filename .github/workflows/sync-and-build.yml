@@ -2,8 +2,8 @@ name: Sync Upstream and Build
 
 on:
   schedule:
-    - cron: '0 19 * * *'  # 每天凌晨3点检查一次
-  workflow_dispatch:      # 手动触发
+    - cron: '0 19 * * *'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -46,17 +46,18 @@ jobs:
             echo "has_custom=false" >> $GITHUB_OUTPUT
           fi
 
+      # --- 修改重点开始 ---
       - name: Merge upstream
         run: |
-          git merge upstream/${{ env.UPSTREAM_BRANCH }} --no-edit || {
-            git checkout --ours Dockerfile
-            git add Dockerfile
-            git commit -m "Merge upstream with custom Dockerfile preserved"
-          }
+          # 直接合并，如果出现冲突，git merge 会返回错误代码
+          # Action 会因此直接失败并报错，不再继续执行
+          git merge upstream/${{ env.UPSTREAM_BRANCH }} --no-edit
+      # --- 修改重点结束 ---
 
       - name: Restore custom dependencies
         if: steps.backup.outputs.has_custom == 'true'
         run: |
+          # 只有在合并成功后才会执行这一步
           cat /tmp/custom_deps.txt >> Dockerfile
           git add Dockerfile
           git diff --cached --quiet || git commit -m "Restore custom dependencies"
