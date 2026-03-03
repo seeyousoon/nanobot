@@ -27,7 +27,10 @@ RUN uv pip install --system --no-cache .
 
 # Build the WhatsApp bridge
 WORKDIR /app/bridge
-RUN npm install && npm run build
+# === 修改开始：强制使用 HTTPS 替代 SSH ===
+RUN git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \
+    npm install && npm run build
+# === 修改结束 ===
 WORKDIR /app
 
 # Create config directory
@@ -60,4 +63,3 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # ===== Custom dependencies end =====
-
