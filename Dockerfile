@@ -52,7 +52,8 @@ RUN uv pip install --system --no-cache \
     pypdf \
     openpyxl \
     python-docx \
-    python-pptx
+    python-pptx \
+    arxiv
 
 # LibreOffice
 RUN apt-get update && \
