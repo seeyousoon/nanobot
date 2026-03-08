@@ -64,10 +64,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Summarize 网页提取总结工具
-RUN wget -O /tmp/summarize.tar.gz https://github.com/steipete/summarize/releases/latest/download/summarize_Linux_arm64.tar.gz && \
+# 使用已有的 curl 替代 wget (加上 -L 参数允许重定向)
+RUN curl -L -o /tmp/summarize.tar.gz https://github.com/steipete/summarize/releases/latest/download/summarize_Linux_arm64.tar.gz && \
     tar -zxvf /tmp/summarize.tar.gz -C /usr/local/bin/ summarize && \
     chmod +x /usr/local/bin/summarize && \
     rm -f /tmp/summarize.tar.gz
-
 
 # ===== Custom dependencies end =====
