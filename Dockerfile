@@ -55,12 +55,23 @@ RUN uv pip install --system --no-cache \
     python-pptx \
     arxiv
 
-# LibreOffice
+# 系统工具 (LibreOffice & GitHub CLI)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        libreoffice-writer \
-        libreoffice-calc \
-        libreoffice-impress && \
+    libreoffice-writer \
+    libreoffice-calc \
+    libreoffice-impress \
+    curl \
+    ca-certificates \
+    gnupg && \
+    # 安装 GitHub CLI (gh)
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && \
+    apt-get update && \
+    apt-get install -y gh && \
+    # 清理缓存
     rm -rf /var/lib/apt/lists/*
 
 # ===== Custom dependencies end =====
