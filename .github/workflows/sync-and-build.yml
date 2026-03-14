@@ -36,36 +36,43 @@ jobs:
           git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git || true
           git fetch upstream
 
-      - name: Backup custom Dockerfile changes
+      - name: Backup custom configs and workflows
         id: backup
         run: |
+          # 1. 备份 Dockerfile 底部自定义依赖
           if grep -q "# Custom dependencies start" Dockerfile; then
             sed -n '/# Custom dependencies start/,/# Custom dependencies end/p' Dockerfile > /tmp/custom_deps.txt
             echo "has_custom=true" >> $GITHUB_OUTPUT
           else
             echo "has_custom=false" >> $GITHUB_OUTPUT
           fi
+          
+          # 2. 备份本地的 GitHub Actions 工作流目录 (防止上游覆盖并解决权限报错)
+          cp -a .github/workflows /tmp/my_workflows
 
       - name: Merge upstream
         run: |
-          # 使用 -X theirs 策略：遇到冲突时，无条件使用上游(upstream)的代码
-          # 这样可以保证 merge 永远不会因为 Dockerfile 冲突而失败
+          # 使用 -X theirs 策略无条件合并上游代码
           git merge upstream/${{ env.UPSTREAM_BRANCH }} -X theirs --no-edit
 
       - name: Restore custom modifications
         run: |
-          # 1. 恢复中间的 npm build 修改 (使用 perl 替换，避免 sed 的特殊字符转义问题)
-          # 这一步会在上游干净的 Dockerfile 中找到 npm install 那行，并替换为你需要的 HTTPS 版本
+          # 1. 恢复本地的 workflows 目录
+          # 先让 git 移除所有当前的 workflow 文件，再把我们备份的放回去
+          git rm -rfq .github/workflows/ || true
+          cp -a /tmp/my_workflows .github/workflows/
+          
+          # 2. 恢复中间的 npm build 修改 (使用 HTTPS 替代 SSH)
           perl -pi -e 's|RUN npm install && npm run build|# === 修改开始：强制使用 HTTPS 替代 SSH ===\nRUN git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \\\n    npm install && npm run build\n# === 修改结束 ===|g' Dockerfile
 
-          # 2. 恢复底部的自定义依赖
+          # 3. 恢复底部的自定义依赖
           if [ "${{ steps.backup.outputs.has_custom }}" == "true" ]; then
             cat /tmp/custom_deps.txt >> Dockerfile
           fi
 
-          # 3. 提交修改
-          git add Dockerfile
-          git diff --cached --quiet || git commit -m "Auto-restore custom dependencies and build configs"
+          # 4. 将所有恢复的文件添加到暂存区并提交
+          git add Dockerfile .github/workflows/
+          git diff --cached --quiet || git commit -m "Auto-restore custom dependencies and local workflows"
 
       - name: Push changes
         run: git push origin main
