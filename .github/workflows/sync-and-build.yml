@@ -46,21 +46,26 @@ jobs:
             echo "has_custom=false" >> $GITHUB_OUTPUT
           fi
 
-      # --- 修改重点开始 ---
       - name: Merge upstream
         run: |
-          # 直接合并，如果出现冲突，git merge 会返回错误代码
-          # Action 会因此直接失败并报错，不再继续执行
-          git merge upstream/${{ env.UPSTREAM_BRANCH }} --no-edit
-      # --- 修改重点结束 ---
+          # 使用 -X theirs 策略：遇到冲突时，无条件使用上游(upstream)的代码
+          # 这样可以保证 merge 永远不会因为 Dockerfile 冲突而失败
+          git merge upstream/${{ env.UPSTREAM_BRANCH }} -X theirs --no-edit
 
-      - name: Restore custom dependencies
-        if: steps.backup.outputs.has_custom == 'true'
+      - name: Restore custom modifications
         run: |
-          # 只有在合并成功后才会执行这一步
-          cat /tmp/custom_deps.txt >> Dockerfile
+          # 1. 恢复中间的 npm build 修改 (使用 perl 替换，避免 sed 的特殊字符转义问题)
+          # 这一步会在上游干净的 Dockerfile 中找到 npm install 那行，并替换为你需要的 HTTPS 版本
+          perl -pi -e 's|RUN npm install && npm run build|# === 修改开始：强制使用 HTTPS 替代 SSH ===\nRUN git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \\\n    npm install && npm run build\n# === 修改结束 ===|g' Dockerfile
+
+          # 2. 恢复底部的自定义依赖
+          if [ "${{ steps.backup.outputs.has_custom }}" == "true" ]; then
+            cat /tmp/custom_deps.txt >> Dockerfile
+          fi
+
+          # 3. 提交修改
           git add Dockerfile
-          git diff --cached --quiet || git commit -m "Restore custom dependencies"
+          git diff --cached --quiet || git commit -m "Auto-restore custom dependencies and build configs"
 
       - name: Push changes
         run: git push origin main
