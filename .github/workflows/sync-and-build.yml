@@ -47,7 +47,7 @@ jobs:
             echo "has_custom=false" >> $GITHUB_OUTPUT
           fi
           
-          # 2. 备份本地的 GitHub Actions 工作流目录 (防止上游覆盖并解决权限报错)
+          # 2. 备份本地的 GitHub Actions 工作流目录
           cp -a .github/workflows /tmp/my_workflows
 
       - name: Merge upstream
@@ -57,10 +57,13 @@ jobs:
 
       - name: Restore custom modifications
         run: |
-          # 1. 恢复本地的 workflows 目录
-          # 先让 git 移除所有当前的 workflow 文件，再把我们备份的放回去
+          # 1. 恢复本地的 workflows 目录 (修复了路径找不到的问题)
+          # 先移除合并过来的所有 workflow 文件
           git rm -rfq .github/workflows/ || true
-          cp -a /tmp/my_workflows .github/workflows/
+          # 重新创建目录
+          mkdir -p .github/workflows
+          # 将备份的内容完整复制回来 (注意这里的 /. 写法，代表复制目录下所有内容)
+          cp -a /tmp/my_workflows/. .github/workflows/
           
           # 2. 恢复中间的 npm build 修改 (使用 HTTPS 替代 SSH)
           perl -pi -e 's|RUN npm install && npm run build|# === 修改开始：强制使用 HTTPS 替代 SSH ===\nRUN git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \\\n    npm install && npm run build\n# === 修改结束 ===|g' Dockerfile
