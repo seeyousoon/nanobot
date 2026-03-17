@@ -52,8 +52,22 @@ jobs:
 
       - name: Merge upstream
         run: |
-          # 使用 -X theirs 策略无条件合并上游代码
-          git merge upstream/${{ env.UPSTREAM_BRANCH }} -X theirs --no-edit
+          # 尝试合并。-X theirs 无法解决 modify/delete (修改/删除) 冲突。
+          # 捕获合并失败，并专门解决 .github/workflows 目录的冲突。
+          if ! git merge upstream/${{ env.UPSTREAM_BRANCH }} -X theirs --no-edit; then
+            echo "检测到合并冲突，正在自动解决工作流文件的 modify/delete 冲突..."
+            
+            # 使用 git rm 移除冲突的 workflows 目录，这会告诉 Git 接受“删除”操作，从而解决冲突
+            git rm -rf .github/workflows/ || true
+            
+            # 安全检查：检查是否还有其他非 workflows 目录的未解决冲突
+            if git ls-files -u | grep -q "^"; then
+              echo "错误：存在 .github/workflows/ 之外的其他未知冲突，请手动检查！"
+              git status
+              exit 1
+            fi
+            echo "工作流冲突已解决，准备进入下一步恢复自定义配置..."
+          fi
 
       - name: Restore custom modifications
         run: |
