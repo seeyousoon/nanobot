@@ -53,6 +53,8 @@ RUN uv pip install --system --no-cache \
     openpyxl \
     python-docx \
     python-pptx \
+    markitdown[pptx] \           # PPTX文本提取（新增：用于提取PPTX中的文本内容）
+    Pillow \                     # 缩略图生成（新增：用于PPTX预览和图像处理）
     arxiv
 
 # 系统工具 (LibreOffice & GitHub CLI)
@@ -61,6 +63,7 @@ RUN apt-get update && \
     libreoffice-writer \
     libreoffice-calc \
     libreoffice-impress \
+    poppler-utils \           # pdftoppm for PPTX to image conversion（新增：PPTX转图片必需工具）
     curl \
     ca-certificates \
     gnupg && \
@@ -71,6 +74,8 @@ RUN apt-get update && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && \
     apt-get update && \
     apt-get install -y gh && \
+    # 安装 pptxgenjs (用于创建PPTX)（新增：可选但建议，用于从头创建PPTX文件）
+    npm install -g pptxgenjs && \
     # 清理缓存
     rm -rf /var/lib/apt/lists/*
 
