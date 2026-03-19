@@ -53,8 +53,10 @@ RUN uv pip install --system --no-cache \
     openpyxl \
     python-docx \
     python-pptx \
-    markitdown[pptx] \           # PPTX文本提取（新增：用于提取PPTX中的文本内容）
-    Pillow \                     # 缩略图生成（新增：用于PPTX预览和图像处理）
+    # PPTX文本提取（新增：用于提取PPTX中的文本内容）
+    markitdown[pptx] \
+    # 缩略图生成（新增：用于PPTX预览和图像处理）
+    Pillow \
     arxiv
 
 # 系统工具 (LibreOffice & GitHub CLI)
@@ -63,7 +65,8 @@ RUN apt-get update && \
     libreoffice-writer \
     libreoffice-calc \
     libreoffice-impress \
-    poppler-utils \           # pdftoppm for PPTX to image conversion（新增：PPTX转图片必需工具）
+    # pdftoppm for PPTX to image conversion（新增：PPTX转图片必需工具）
+    poppler-utils \
     curl \
     ca-certificates \
     gnupg && \
