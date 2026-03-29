@@ -29,10 +29,8 @@ RUN uv pip install --system --no-cache .
 RUN git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
 
 WORKDIR /app/bridge
-# === 修改开始：强制使用 HTTPS 替代 SSH ===
 RUN git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \
     npm install && npm run build
-# === 修改结束 ===
 WORKDIR /app
 
 # Create config directory
@@ -46,7 +44,7 @@ CMD ["status"]
 
 # ===== Custom dependencies start =====
 
-# 文档技能依赖
+# 1. 文档技能依赖 (Python)
 RUN uv pip install --system --no-cache \
     pdfplumber \
     reportlab \
@@ -55,19 +53,16 @@ RUN uv pip install --system --no-cache \
     openpyxl \
     python-docx \
     python-pptx \
-    # PPTX文本提取（新增：用于提取PPTX中的文本内容）
     markitdown[pptx] \
-    # 缩略图生成（新增：用于PPTX预览和图像处理）
     Pillow \
     arxiv
 
-# 系统工具 (LibreOffice & GitHub CLI)
+# 2. 系统工具 & GitHub CLI
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libreoffice-writer \
     libreoffice-calc \
     libreoffice-impress \
-    # pdftoppm for PPTX to image conversion（新增：PPTX转图片必需工具）
     poppler-utils \
     curl \
     ca-certificates \
@@ -79,9 +74,10 @@ RUN apt-get update && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && \
     apt-get update && \
     apt-get install -y gh && \
-    # 安装 pptxgenjs (用于创建PPTX)（新增：可选但建议，用于从头创建PPTX文件）
-    npm install -g pptxgenjs && \
-    # 清理缓存
+    # 清理
     rm -rf /var/lib/apt/lists/*
+
+# 3. Node.js 全局工具 (Lark CLI & PPTX)
+RUN npm install -g @larksuite/cli pptxgenjs
 
 # ===== Custom dependencies end =====
